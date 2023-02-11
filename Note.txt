@@ -1,0 +1,61 @@
+ln -s ~/.platformio/penv/bin/platformio /usr/local/bin/platformio
+
+platformio run
+
+
+platformio run --target upload
+
+platformio device monitor
+
+
+
+FUNCTION	COMMAND
+PIO Build	platformio run -e target_env
+PIO Clean	platformio run --target clean -e target_env
+PIO Upload	platformio run --target upload -e target_env
+PIO Traceback	platformio run --target upload -e target_env
+PIO Program	platformio run --target program -e target_env
+PIO Test	platformio test upload -e target_env
+PIO Remote	platformio remote run --target upload -e target_env
+PIO Debug	platformio debug -e target_env
+
+
+
+
+
+
+
+
+brew install platformio
+
+pio run -t upload
+
+
+
+# Change directory to PlatformIO Project where is located "platformio.ini"
+cd path/to/platformio/project
+
+# Force PlatformIO to install PlatformIO Home dependencies
+pio home
+
+# Force PlatformIO to install toolchains
+pio run --target upload
+
+
+https://docs.platformio.org/en/latest/core/userguide/lib/cmd_install.html
+https://marlinfw.org/docs/basics/install_platformio_cli.html
+https://docs.platformio.org/en/latest/core/userguide/index.html
+
+
+
+
+
+
+sudo ./svc.sh install
+sudo ./svc.sh start
+sudo ./svc.sh status
+
+sudo ./svc.sh stop
+sudo ./svc.sh uninstall
+
+export RUNNER_ALLOW_RUNASROOT="1"

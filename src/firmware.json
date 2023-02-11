@@ -1,0 +1,18 @@
+{
+  "author": "Watchara Pongsri",
+  "name": "Smart Home By Mr.Unixz",
+  "type": "IoT",
+  "email": "rockdevper@gmail.com",
+  "devices": [
+    {
+      "deviceName": "SolarPower",
+      "version": "0.2.9",
+      "firmware": "https://www.rockdevper.com/firmware/solarpower.bin"
+    },
+    {
+      "deviceName": "FarmBot",
+      "version": "0.0.3",
+      "firmware": "https://www.rockdevper.com/firmware/farmbot.bin"
+    }
+  ]
+}

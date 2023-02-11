@@ -1,0 +1,117 @@
+name:  PlatformIO CI
+
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ release/* ]
+    tags:
+      - '!refs/tags/*'
+  pull_request:
+    branches: [ release/* ]
+
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    container: infinitecoding/platformio-for-ci:latest
+    env:
+      appName: "SolarPower"
+    outputs:
+        appName: ${{ env.appName }}
+        version: ${{ steps.config.outputs.version }}
+    steps:
+      - uses: actions/checkout@v2
+        
+      - name: Install Jq
+        run: apt update && apt install jq -y
+        
+      # Runs a set of commands using the runners shell
+      - name: Get Version number from json file
+        id: config
+        run: |
+          echo ::set-output name=version::$(cat src/firmware.json | jq '(.devices[] | select(.deviceName=="${{ env.appName }}") | .version)' | sed -e 's/^"//' -e 's/"$//')
+
+      - name: Set Release date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+        env:
+          TAG_NAME: nightly-tag-${{ steps.date.outputs.date }}
+          RELEASE_NAME: nightly-release-${{ steps.date.outputs.date }}
+      
+      - name: Replace tokens
+        uses: cschleiden/replace-tokens@v1
+        with:
+          tokenPrefix: '#{'
+          tokenSuffix: '}#'
+          files: '["./src/configs.h"]'
+        env:
+          WIFI_SSID: ${{ secrets.WIFI_SSID }}
+          WIFI_PASSWORD: ${{ secrets.WIFI_PASSWORD }}
+          SOCKETIO_HOST: ${{ secrets.SOCKETIO_HOST }}
+          SOCKETIO_PORT: ${{ secrets.SOCKETIO_PORT }}
+          SOCKETIO_CHANNEL: ${{ secrets.SOCKETIO_CHANNEL }}
+          LINE_TOKEN: ${{ secrets.LINE_TOKEN }}
+          FIRMWARE_SERVER: ${{ secrets.FIRMWARE_SERVER }}
+          FIRMWARE_VERSION: ${{ steps.config.outputs.version }}
+          FIRMWARE_LASTUPDATE: ${{ steps.date.outputs.date }}
+          DEVICE_NAME: ${{ env.appName }}
+      
+      - name: Recheck configuration file
+        run: |
+          cat ./src/configs.h
+
+      - name: Build firmware
+        run: platformio run -d .
+
+      - name: Upload artifact firmware.bin
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.appName }}
+          path: .pio/build/nodemcu-32s/firmware.bin
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+            
+      - name: Update artifact firmware.json
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.appName }}
+          path: ./src/firmware.json
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn` 
+      
+          
+  Release:
+    needs: Build
+    runs-on: self-hosted
+    env:
+      ReleasePath: /var/www/html/firmware/
+    steps:
+     
+      - name: Download artifact
+        uses: actions/download-artifact@master
+        with:
+          name: ${{ needs.Build.outputs.appName}}
+          path: ${{ env.ReleasePath }}
+        
+      - name: Move file to release folder
+        run: |
+          cd ${{ env.ReleasePath }}
+          mv firmware.bin $(echo ${{ needs.Build.outputs.appName}} | tr '[A-Z]' '[a-z]').bin
+          ls -la .
+          
+      - name: Tag Repo
+        uses: richardsimko/update-tag@v1
+        with:
+          tag_name: ${{needs.Build.outputs.version}}
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            
+      - name: Send Line Notify
+        run: |
+          curl -X POST -H 'Authorization: Bearer ${{ secrets.LINE_TOKEN }}' \
+          -F 'message=${{needs.Build.outputs.appName}} BUILD #${{needs.Build.outputs.version}} SUCCEEDED' \
+          https://notify-api.line.me/api/notify
+        
+          
+          
